@@ -826,10 +826,24 @@ function loadDataFromStorage() {
             if (parsed.categories && Array.isArray(parsed.categories)) {
                 dashboardData.categories = parsed.categories;
                 console.log('localStorage에서 데이터를 로드했습니다.');
+                return;
             }
         }
+
+        // localStorage가 비어있으면 초기 데이터 로드
+        if (window.INITIAL_DASHBOARD_DATA) {
+            dashboardData.categories = window.INITIAL_DASHBOARD_DATA.categories;
+            // localStorage에 초기 데이터 저장
+            localStorage.setItem('mno_dashboard_data', JSON.stringify(window.INITIAL_DASHBOARD_DATA));
+            console.log('초기 데이터를 로드하고 localStorage에 저장했습니다.');
+        }
     } catch (error) {
-        console.warn('localStorage 데이터 로드 실패, 기본 데이터 사용:', error);
+        console.warn('localStorage 데이터 로드 실패:', error);
+        // 에러 발생 시에도 초기 데이터 시도
+        if (window.INITIAL_DASHBOARD_DATA) {
+            dashboardData.categories = window.INITIAL_DASHBOARD_DATA.categories;
+            console.log('초기 데이터를 사용합니다.');
+        }
     }
 }
 

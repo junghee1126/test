@@ -66,10 +66,16 @@ function initializeAdmin() {
 function loadData() {
     const stored = window.DataManager.getDashboardData();
 
-    if (stored && stored.categories) {
+    if (stored && stored.categories && stored.categories.length > 0) {
         adminState.data = stored;
+    } else if (window.INITIAL_DASHBOARD_DATA) {
+        // localStorage가 비어있으면 초기 데이터 사용
+        adminState.data = window.INITIAL_DASHBOARD_DATA;
+        // localStorage에 저장
+        window.DataManager.saveDashboardData(window.INITIAL_DASHBOARD_DATA);
+        console.log('초기 데이터를 로드하고 localStorage에 저장했습니다.');
     } else {
-        // 기본 데이터가 없으면 빈 구조 생성
+        // 초기 데이터도 없으면 빈 구조 생성
         adminState.data = {
             version: "1.0.0",
             lastModified: new Date().toISOString(),
