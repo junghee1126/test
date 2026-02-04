@@ -63,17 +63,6 @@ body {
     background: #5568d3;
 }
 
-.header-button.sync {
-    border-color: #4299e1;
-    color: #4299e1;
-}
-
-.header-button.sync:hover {
-    background: #4299e1;
-    color: white;
-    box-shadow: 0 4px 8px rgba(66, 153, 225, 0.3);
-}
-
 /* ===== Main Layout ===== */
 .admin-layout {
     height: calc(100vh - 72px);
@@ -427,16 +416,6 @@ body {
     color: white;
 }
 
-.tree-row-button.sync {
-    color: #4299e1;
-    border-color: #4299e1;
-}
-
-.tree-row-button.sync:hover {
-    background: #4299e1;
-    color: white;
-}
-
 /* ===== Tree Children (Nested Rows) ===== */
 .tree-row-children {
     display: none;
@@ -767,22 +746,6 @@ body {
 .form-textarea {
     resize: vertical;
     min-height: 80px;
-}
-
-.form-select.multi-select {
-    min-height: 120px;
-    padding: 8px;
-}
-
-.form-select.multi-select option {
-    padding: 8px 10px;
-    border-radius: 4px;
-    margin-bottom: 4px;
-}
-
-.form-select.multi-select option:checked {
-    background: #667eea;
-    color: white;
 }
 
 .form-help {

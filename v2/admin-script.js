@@ -35,7 +35,6 @@ const elements = {
     cancelButton: document.getElementById('cancelButton'),
     closeModalButton: document.getElementById('closeModalButton'),
     toast: document.getElementById('toast'),
-    syncAllButton: document.getElementById('syncAllButton'),
     backupButton: document.getElementById('backupButton'),
     dashboardButton: document.getElementById('dashboardButton'),
     backupModalOverlay: document.getElementById('backupModalOverlay'),
@@ -206,7 +205,6 @@ function renderTaskRow(task, categoryId, subcategoryId) {
                     </div>
                     <div class="tree-row-actions">
                         <button class="tree-row-button edit" onclick="editTask('${task.id}')">편집</button>
-                        <button class="tree-row-button sync" onclick="syncTask('${task.id}')">불러오기</button>
                     </div>
                 </div>
             </div>
@@ -730,85 +728,18 @@ function performDeleteTask(taskId) {
 
 function createTask(formData) {
     const categoryId = formData.parentCategoryId || adminState.selectedCategory;
-
-    // 복수 대분류 처리
-    const subcategoryIds = formData.parentSubcategoryIds || [formData.parentSubcategoryId || adminState.selectedSubcategory];
+    const subcategoryId = formData.parentSubcategoryId || adminState.selectedSubcategory;
 
     const category = adminState.data.categories.find(cat => cat.id === categoryId);
     if (!category) return;
 
-    let createdCount = 0;
+    const subcategory = category.subcategories.find(sub => sub.id === subcategoryId);
+    if (!subcategory) return;
 
-    // 선택된 각 대분류에 과제 생성
-    subcategoryIds.forEach(subcategoryId => {
-        const subcategory = category.subcategories.find(sub => sub.id === subcategoryId);
-        if (!subcategory) return;
+    const newId = window.DataManager.generateTaskId(categoryId, subcategoryId, subcategory.tasks);
 
-        const newId = window.DataManager.generateTaskId(categoryId, subcategoryId, subcategory.tasks);
-
-        const newTask = {
-            id: newId,
-            title: formData.title,
-            overview: formData.overview,
-            organization: formData.organization,
-            metrics: {
-                current: formData.current,
-                unit: formData.unit,
-                target: formData.target,
-                achievement: formData.achievement + '%'
-            }
-        };
-
-        if (!subcategory.tasks) {
-            subcategory.tasks = [];
-        }
-        subcategory.tasks.push(newTask);
-        createdCount++;
-    });
-
-    if (createdCount > 0) {
-        saveData();
-        if (createdCount > 1) {
-            showToast(`${createdCount}개의 대분류에 과제가 생성되었습니다`, 'success');
-        }
-    }
-}
-
-function updateTask(taskId, formData) {
-    const newCategoryId = formData.parentCategoryId;
-    const newSubcategoryIds = formData.parentSubcategoryIds || [formData.parentSubcategoryId];
-
-    if (!newSubcategoryIds || newSubcategoryIds.length === 0) {
-        showToast('최소 하나의 대분류를 선택해주세요', 'error');
-        return;
-    }
-
-    const newCategory = adminState.data.categories.find(cat => cat.id === newCategoryId);
-    if (!newCategory) return;
-
-    // 기존에 과제가 속한 모든 위치 찾기
-    const existingLocations = [];
-    adminState.data.categories.forEach(category => {
-        category.subcategories.forEach(subcategory => {
-            const taskIndex = subcategory.tasks ? subcategory.tasks.findIndex(t => t.id === taskId) : -1;
-            if (taskIndex !== -1) {
-                existingLocations.push({
-                    category,
-                    subcategory,
-                    taskIndex,
-                    task: subcategory.tasks[taskIndex]
-                });
-            }
-        });
-    });
-
-    if (existingLocations.length === 0) return;
-
-    // 첫 번째 위치의 과제를 템플릿으로 사용
-    const templateTask = existingLocations[0].task;
-
-    // 과제 데이터 업데이트
-    const updatedTaskData = {
+    const newTask = {
+        id: newId,
         title: formData.title,
         overview: formData.overview,
         organization: formData.organization,
@@ -820,38 +751,72 @@ function updateTask(taskId, formData) {
         }
     };
 
-    // 기존 위치에서 과제 제거
-    existingLocations.forEach(loc => {
-        loc.subcategory.tasks.splice(loc.taskIndex, 1);
-    });
+    subcategory.tasks.push(newTask);
+    saveData();
+}
 
-    // 선택된 각 대분류에 과제 생성/업데이트
-    newSubcategoryIds.forEach(subcategoryId => {
-        const targetSubcategory = newCategory.subcategories.find(sub => sub.id === subcategoryId);
-        if (!targetSubcategory) return;
+function updateTask(taskId, formData) {
+    const newCategoryId = formData.parentCategoryId;
+    const newSubcategoryId = formData.parentSubcategoryId;
+    let task = null;
+    let oldCategory = null;
+    let oldSubcategory = null;
 
-        if (!targetSubcategory.tasks) {
-            targetSubcategory.tasks = [];
+    // 기존 task 찾기
+    for (const category of adminState.data.categories) {
+        for (const subcategory of category.subcategories) {
+            const t = subcategory.tasks.find(task => task.id === taskId);
+            if (t) {
+                task = t;
+                oldCategory = category;
+                oldSubcategory = subcategory;
+                break;
+            }
         }
+        if (task) break;
+    }
 
-        // ID 생성 (첫 번째 대분류는 기존 ID 유지, 나머지는 새 ID)
-        const newId = targetSubcategory.tasks.length === 0 && newSubcategoryIds[0] === subcategoryId
-            ? taskId
-            : window.DataManager.generateTaskId(newCategoryId, subcategoryId, targetSubcategory.tasks);
+    if (!task) return;
 
-        const newTask = {
-            id: newId,
-            ...updatedTaskData
+    // 위치 변경이 필요한 경우
+    if ((newCategoryId && newCategoryId !== oldCategory.id) ||
+        (newSubcategoryId && newSubcategoryId !== oldSubcategory.id)) {
+        const newCategory = adminState.data.categories.find(cat => cat.id === newCategoryId);
+        if (newCategory) {
+            const newSubcategory = newCategory.subcategories.find(sub => sub.id === newSubcategoryId);
+            if (newSubcategory) {
+                // 기존 위치에서 제거
+                oldSubcategory.tasks = oldSubcategory.tasks.filter(t => t.id !== taskId);
+
+                // 데이터 업데이트
+                task.title = formData.title;
+                task.overview = formData.overview;
+                task.organization = formData.organization;
+                task.metrics = {
+                    current: formData.current,
+                    unit: formData.unit,
+                    target: formData.target,
+                    achievement: formData.achievement + '%'
+                };
+
+                // 새 위치에 추가
+                newSubcategory.tasks.push(task);
+            }
+        }
+    } else {
+        // 같은 위치에서 수정
+        task.title = formData.title;
+        task.overview = formData.overview;
+        task.organization = formData.organization;
+        task.metrics = {
+            current: formData.current,
+            unit: formData.unit,
+            target: formData.target,
+            achievement: formData.achievement + '%'
         };
-
-        targetSubcategory.tasks.push(newTask);
-    });
+    }
 
     saveData();
-
-    if (newSubcategoryIds.length > 1) {
-        showToast(`${newSubcategoryIds.length}개의 대분류에 과제가 저장되었습니다`, 'success');
-    }
 }
 
 // ===== 모달 관리 =====
@@ -968,20 +933,6 @@ function renderForm(type, entity, parentId = null) {
 
         const currentCategory = categories.find(cat => cat.id === currentCategoryId);
 
-        // 편집 모드: 현재 과제가 속한 모든 대분류 찾기
-        let taskSubcategoryIds = [];
-        if (entity) {
-            categories.forEach(cat => {
-                cat.subcategories.forEach(sub => {
-                    if (sub.tasks && sub.tasks.some(t => t.id === entity.id)) {
-                        taskSubcategoryIds.push(sub.id);
-                    }
-                });
-            });
-        } else {
-            taskSubcategoryIds = [currentSubcategoryId];
-        }
-
         html = `
             <div class="form-group">
                 <label class="form-label required">상위 카테고리</label>
@@ -992,13 +943,12 @@ function renderForm(type, entity, parentId = null) {
                 </select>
             </div>
             <div class="form-group">
-                <label class="form-label required">상위 대분류 (복수 선택 가능)</label>
-                <select class="form-select multi-select" name="parentSubcategoryId" id="taskParentSubcategory" multiple required>
+                <label class="form-label required">상위 대분류</label>
+                <select class="form-select" name="parentSubcategoryId" id="taskParentSubcategory" required>
                     ${currentCategory ? currentCategory.subcategories.map(sub => `
-                        <option value="${sub.id}" ${taskSubcategoryIds.includes(sub.id) ? 'selected' : ''}>${sub.title}</option>
+                        <option value="${sub.id}" ${sub.id === currentSubcategoryId ? 'selected' : ''}>${sub.title}</option>
                     `).join('') : ''}
                 </select>
-                <div class="form-help">Ctrl/Cmd 키를 누른 채로 클릭하여 여러 대분류를 선택할 수 있습니다. ${entity ? '선택되지 않은 대분류에서는 과제가 제거됩니다.' : ''}</div>
             </div>
             <div class="form-group">
                 <label class="form-label required">제목</label>
@@ -1066,17 +1016,6 @@ function handleFormSubmit() {
     if (!elements.modalForm.checkValidity()) {
         elements.modalForm.reportValidity();
         return;
-    }
-
-    // Multiple select 처리 (생성 모드의 대분류 선택)
-    const subcategorySelect = document.getElementById('taskParentSubcategory');
-    if (subcategorySelect && subcategorySelect.multiple) {
-        const selectedOptions = Array.from(subcategorySelect.selectedOptions).map(opt => opt.value);
-        if (selectedOptions.length === 0) {
-            alert('최소 하나의 대분류를 선택해주세요.');
-            return;
-        }
-        data.parentSubcategoryIds = selectedOptions; // 배열로 저장
     }
 
     let type = '';
@@ -1237,7 +1176,6 @@ function showToast(message, type = 'success') {
 // ===== 이벤트 리스너 설정 =====
 function setupEventListeners() {
     // Header buttons
-    elements.syncAllButton.addEventListener('click', syncAllTasks);
     elements.backupButton.addEventListener('click', handleBackup);
     elements.dashboardButton.addEventListener('click', () => {
         window.open('index.html', '_blank');
@@ -1288,12 +1226,16 @@ function setupEventListeners() {
 function updateModalFooterForTask() {
     const modalFooter = document.querySelector('#modalOverlay .modal-footer');
     modalFooter.innerHTML = `
+        <button type="button" id="moveTaskButton" class="button secondary">이동</button>
+        <button type="button" id="copyTaskButton" class="button secondary">복사</button>
         <button type="button" id="deleteTaskButton" class="button danger">삭제</button>
         <button type="button" id="cancelButton" class="button secondary">취소</button>
         <button type="button" id="submitButton" class="button primary">저장</button>
     `;
 
     // 이벤트 리스너 재설정
+    document.getElementById('moveTaskButton').addEventListener('click', showMoveTaskModal);
+    document.getElementById('copyTaskButton').addEventListener('click', showCopyTaskModal);
     document.getElementById('deleteTaskButton').addEventListener('click', () => {
         if (adminState.currentEntity) {
             deleteTask(adminState.currentEntity.id);
@@ -1579,109 +1521,4 @@ function performCopyTask(targetCategoryId, targetSubcategoryId) {
         showToast('과제가 복사되었습니다', 'success');
         closeModal();
     }
-}
-
-// ===== 원천 시스템 연동 기능 =====
-
-// 개별 과제 데이터 불러오기
-function syncTask(taskId) {
-    const task = findTaskById(taskId);
-    if (!task) {
-        showToast('과제를 찾을 수 없습니다', 'error');
-        return;
-    }
-
-    // 확인 다이얼로그
-    const confirmMsg = `"${task.title}" 과제의 데이터를 원천 시스템에서 불러오시겠습니까?\n\n현재 데이터가 업데이트됩니다.`;
-
-    if (confirm(confirmMsg)) {
-        // 원천 시스템 연동 시뮬레이션 (실제로는 API 호출)
-        simulateSyncTask(task);
-
-        // 저장 및 화면 갱신
-        adminState.data.lastModified = new Date().toISOString();
-        if (window.DataManager.saveDashboardData(adminState.data)) {
-            showToast(`"${task.title}" 데이터를 업데이트했습니다`, 'success');
-            renderUnifiedTree();
-        }
-    }
-}
-
-// 전체 과제 데이터 불러오기
-function syncAllTasks() {
-    const totalTasks = countAllTasks();
-
-    if (totalTasks === 0) {
-        showToast('불러올 과제가 없습니다', 'warning');
-        return;
-    }
-
-    const confirmMsg = `전체 ${totalTasks}개 과제의 데이터를 원천 시스템에서 불러오시겠습니까?\n\n모든 과제의 현재 데이터가 업데이트됩니다.`;
-
-    if (confirm(confirmMsg)) {
-        // 전체 과제 동기화
-        let syncedCount = 0;
-
-        adminState.data.categories.forEach(category => {
-            category.subcategories.forEach(subcategory => {
-                if (subcategory.tasks) {
-                    subcategory.tasks.forEach(task => {
-                        simulateSyncTask(task);
-                        syncedCount++;
-                    });
-                }
-            });
-        });
-
-        // 저장
-        adminState.data.lastModified = new Date().toISOString();
-        if (window.DataManager.saveDashboardData(adminState.data)) {
-            showToast(`전체 ${syncedCount}개 과제 데이터를 업데이트했습니다`, 'success');
-            renderUnifiedTree();
-        }
-    }
-}
-
-// 원천 시스템 연동 시뮬레이션
-function simulateSyncTask(task) {
-    // 실제 구현 시에는 여기서 API를 호출합니다
-    // 예: fetch('/api/sync/task/' + task.id)
-
-    // 시뮬레이션: 랜덤 데이터 생성
-    const currentValue = Math.floor(Math.random() * 100) + 50;
-    const targetValue = Math.floor(Math.random() * 50) + 100;
-    const achievement = Math.round((currentValue / targetValue) * 100);
-
-    // 데이터 업데이트
-    task.metrics.current = currentValue.toString();
-    task.metrics.target = targetValue.toString();
-    task.metrics.achievement = achievement + '%';
-
-    console.log(`[동기화] ${task.title}: ${task.metrics.current}/${task.metrics.target} (${task.metrics.achievement})`);
-}
-
-// 전체 과제 수 계산
-function countAllTasks() {
-    let count = 0;
-    adminState.data.categories.forEach(category => {
-        category.subcategories.forEach(subcategory => {
-            if (subcategory.tasks) {
-                count += subcategory.tasks.length;
-            }
-        });
-    });
-    return count;
-}
-
-// ID로 과제 찾기
-function findTaskById(taskId) {
-    for (const category of adminState.data.categories) {
-        for (const subcategory of category.subcategories) {
-            if (subcategory.tasks) {
-                const task = subcategory.tasks.find(t => t.id === taskId);
-                if (task) return task;
-            }
-        }
-    }
-    return null;
 }
