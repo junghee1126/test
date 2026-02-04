@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MNO Masterplan Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Dashboard View (초기 화면) -->
+    <div id="dashboardView" class="dashboard-view active">
+        <div class="dashboard-container">
+            <!-- Header -->
+            <header class="dashboard-header">
+                <h1>MNO Masterplan Dashboard</h1>
+                <button class="admin-button" onclick="openAdmin()">관리자</button>
+            </header>
+
+            <!-- Summary Section -->
+            <div class="summary-section">
+                <div class="total-tasks">
+                    <span class="tasks-label"># 총 과제 : 68개</span>
+                    <div class="status-indicators">
+                        <span class="status-item"><span class="dot green"></span>57개</span>
+                        <span class="status-item"><span class="dot yellow"></span>8개</span>
+                        <span class="status-item"><span class="dot red"></span>12개</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- KPI Cards Grid -->
+            <div class="kpi-grid">
+                <!-- 10개 KPI 카드가 동적으로 생성됩니다 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Task View (과제 View - 3열 레이아웃) -->
+    <div id="taskView" class="task-view">
+        <header class="dashboard-header">
+            <h1 id="dashboardTitle" class="clickable-title">MNO Masterplan 통합 Dashboard</h1>
+            <div class="header-actions">
+                <button class="admin-button" onclick="openAdmin()">관리자</button>
+                <button id="orgViewButton" class="org-view-button">조직 View</button>
+            </div>
+        </header>
+
+        <!-- 조직 카드 영역 -->
+        <div id="organizationSection" class="organization-section">
+            <div id="organizationCards" class="organization-cards">
+                <!-- 조직 카드들이 동적으로 생성됩니다 -->
+            </div>
+        </div>
+
+        <div class="three-column-layout">
+            <!-- 1열: 대분류 (핵심지표) -->
+            <div class="column column-1">
+                <h3 class="column-title">핵심지표</h3>
+                <div id="categoryList" class="card-list">
+                    <!-- 대분류 카드들 -->
+                </div>
+            </div>
+
+            <!-- 2열: 중분류 -->
+            <div class="column column-2">
+                <h3 class="column-title">대분류</h3>
+                <div id="subcategoryList" class="card-list">
+                    <div class="placeholder">핵심지표를 선택해주세요</div>
+                </div>
+            </div>
+
+            <!-- 3열: 소분류 -->
+            <div class="column column-3">
+                <h3 class="column-title">세부 O/I 과제</h3>
+                <div id="taskList" class="card-list">
+                    <div class="placeholder">대분류를 선택해주세요</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
