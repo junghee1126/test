@@ -849,7 +849,11 @@ function loadDataFromStorage() {
 
 // Admin 페이지 열기
 function openAdmin() {
-    window.open('admin.html', '_blank');
+    // 현재 경로 기준으로 상대 경로 계산
+    const currentPath = window.location.pathname;
+    const basePath = currentPath.substring(0, currentPath.lastIndexOf('/'));
+    const adminUrl = basePath ? basePath + '/admin.html' : './admin.html';
+    window.open(adminUrl, '_blank');
 }
 
 // 그리드 뷰 렌더링
@@ -1135,8 +1139,11 @@ function clearTaskList() {
 
 // 소분류 상세 페이지 열기
 function openTaskDetail(taskId) {
-    // 상세 페이지를 새 탭으로 열기
-    window.open(`detail.html?taskId=${taskId}`, '_blank');
+    // 현재 경로 기준으로 상대 경로 계산
+    const currentPath = window.location.pathname;
+    const basePath = currentPath.substring(0, currentPath.lastIndexOf('/'));
+    const detailUrl = basePath ? basePath + '/detail.html?taskId=' + taskId : './detail.html?taskId=' + taskId;
+    window.open(detailUrl, '_blank');
 }
 
 // 조직별 과제 수 계산

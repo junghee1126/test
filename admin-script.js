@@ -1246,7 +1246,11 @@ function setupEventListeners() {
     elements.syncAllButton.addEventListener('click', syncAllTasks);
     elements.backupButton.addEventListener('click', handleBackup);
     elements.dashboardButton.addEventListener('click', () => {
-        window.open('index.html', '_blank');
+        // 현재 경로 기준으로 상대 경로 계산
+        const currentPath = window.location.pathname;
+        const basePath = currentPath.substring(0, currentPath.lastIndexOf('/'));
+        const indexUrl = basePath ? basePath + '/index.html' : './index.html';
+        window.open(indexUrl, '_blank');
     });
 
     // Toggle All button
